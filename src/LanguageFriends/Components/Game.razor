@@ -24,6 +24,9 @@
                     <span class="mini"><Kid Language="@_to" /></span>
                 </button>
             }
+            <button type="button" class="check-btn" @onclick="OpenCheck" title="Check language: hear every letter, number and word">
+                <span aria-hidden="true">🔍</span><span class="check-label">Check language</span>
+            </button>
             <button type="button" class="round-btn" @onclick="ToggleEffects" aria-pressed="@Sound.Effects"
                     title="@(Sound.Effects ? "🔔 on" : "🔕 off")">@(Sound.Effects ? "🔔" : "🔕")</button>
             <a class="kg-home" href="../" aria-label="Alle spil" title="Alle spil"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11.5 12 4l9 7.5M5.5 9.5V20h4.5v-6h4v6h4.5V9.5" /></svg></a>
@@ -235,6 +238,11 @@
         }
     }
 
+    @if (_checking && Data.Loaded)
+    {
+        <LanguageCheck Code="@(_to?.Code ?? "da-DK")" OnClose="CloseCheck" />
+    }
+
     <footer class="credits">
         <p dir="@(_from?.Dir ?? "ltr")">🔊 @((_from ?? Languages.All[0]).Ui.Voices)</p>
         <p>Lavet med kærlighed 💛 (c) 2026 Per Hejndorf, Kreaton – @BuildInfo.Display</p>
@@ -260,6 +268,7 @@
     private bool _wrongFlash;
     private bool _notInMine;
     private bool _ownHeard;   // the child has already heard this question in their own language
+    private bool _checking;   // the Check language pane is open
 
     // Bumped for every new question or screen, so an old timer or sound that finishes late does nothing.
     private int _token;
@@ -302,6 +311,32 @@
     private void GoHome() => Show(_from is not null && _to is not null ? Screen.Menu : Screen.PickFrom);
 
     private void ChangeLanguages() => Show(Screen.PickFrom);
+
+    private void OpenCheck()
+    {
+        _token++;   // the game stops talking and waiting while the pane is open
+        _ = Sound.StopAsync();
+        _checking = true;
+    }
+
+    /// <summary>Back from the pane: a round that was going on carries on with its question (or the next one).</summary>
+    private async Task CloseCheck()
+    {
+        _checking = false;
+        if (_screen != Screen.Play || _round is null) return;
+        if (!_round.Solved)
+        {
+            await AskAsync();
+            return;
+        }
+        if (_round.IsLast)
+        {
+            await FinishAsync();
+            return;
+        }
+        _round.Next();
+        await AskAsync();
+    }
 
     private async Task PickFrom(Language lang)
     {

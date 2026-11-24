@@ -85,7 +85,17 @@ python -X utf8 tools/build_data.py ..\..\..\Audio
 
 The number sounds are the voice reading the digits, so the written number words must match what it says. `NUMBER_FIXES` in `build_data.py` shows Danish 1 as *en*, as the voice says it, instead of the CSV's CLDR form *et*.
 
-To drop a picture word from one language, for example because its recording is wrong, add it to `SKIP_WORDS` in `build_data.py`, written as in that language's column of `dictionary.csv`, and run the script again. The word loses its text and sound in that language, and a round never uses it (as question or as wrong picture) when that language is either of the two; other language pairs still have it. Danish *rose* 🌹 and *fly* ✈️ are skipped this way, because the Danish voice gets them wrong.
+To drop a picture word from one language, for example because its recording is wrong, add it to `SKIP_WORDS` in `build_data.py`, written as in that language's column of `dictionary.csv`, and run the script again. A round then never uses the word (as question or as wrong picture) when that language is either of the two; other language pairs still have it. Its text and current recording stay in the data, marked `"skip"`, so **Check language** can still show and play it. Danish *rose* 🌹 (D063) and *fly* ✈️ (D070) are skipped this way, because the Danish voice gets them wrong; they need new recordings.
+
+### Check language
+
+The data and the recordings have not been checked by native speakers yet. The **🔍 Check language** button at the top of the page opens a pane for doing that. Pick a language and **Alphabet**, **Pictures** or **Numbers**, then step through every item with ⏮ ▶ ⏭ (or ← → and space; Esc closes). Each step plays the recording and shows:
+
+- the internal number of the recording: `A01` for the first letter, `N01` for the number 1, `D063` for word 063 in `dictionary.csv`, and the file it came from in the Audio project (`outputaudio/da-DK/dictionary/D063_female.mp3`)
+- the letter (with its lower case), the number with its number word, or the picture with the word, plus the English and Danish word for comparison
+- a warning on words left out with `SKIP_WORDS`, and a note on number words changed with `NUMBER_FIXES`
+
+Changing the language keeps the same item, so one word can be compared across languages. The slider jumps anywhere in the list. The pane is in English, because it is meant for the grown-ups checking the data.
 
 The game's own texts (the buttons, "Try again!", "Well done!", the greetings) are in [`Models/Languages.cs`](src/LanguageFriends/Models/Languages.cs), written by hand. **A native speaker should check them**, like the word translations in the Audio project.
 
@@ -99,6 +109,7 @@ art/icon.svg                     The app icon: Freja and Omar saying hello
 src/LanguageFriends/
   Components/Game.razor          The screens: pick languages, menu, playing, round done
   Components/Kid.razor           The cartoon kid (SVG) and its moods
+  Components/LanguageCheck.razor The Check language pane: step through and hear every letter, number and word
   Models/Languages.cs            The 16 languages: kid, look, greetings and the game's texts
   Models/Language.cs, Kid.cs, UiText.cs
   Services/Round.cs              The rules: questions, levels, choices, score and stars

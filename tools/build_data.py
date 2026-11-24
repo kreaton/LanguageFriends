@@ -31,7 +31,8 @@ NUMBER_FIXES = {("da-DK", 1): "en"}
 
 # Picture words to leave out of one language, written as in that language's column of dictionary.csv,
 # usually because the recording is wrong. The word is still used between other languages; a round never
-# asks it when the language is the one being learned or the child's own.
+# asks it when the language is the one being learned or the child's own. Its text and current recording
+# stay in the data (marked "skip"), so the Check language pane can still show and play it.
 SKIP_WORDS = {
     "da-DK": {"rose", "fly"},   # the Danish voice gets these wrong
 }
@@ -80,6 +81,8 @@ def main(audio_root: Path) -> None:
     for lang in languages:
         letters = list(alphabets[lang])
         nums = [NUMBER_FIXES.get((lang, i + 1), text) for i, text in enumerate(numbers[lang])]
+        # The CSV text of every number word changed by NUMBER_FIXES, shown by the Check language pane.
+        changed = {str(n): numbers[lang][n - 1] for (code, n) in NUMBER_FIXES if code == lang}
         if len(nums) != 10:
             sys.exit(f"{lang}: expected the numbers 1-10, found {len(nums)}")
         for i in range(len(letters)):
@@ -87,19 +90,19 @@ def main(audio_root: Path) -> None:
         for i in range(len(nums)):
             need(lang, "numbers", f"N{i + 1:02}")
         for row in dictionary:
-            name = f"D{row['number']}"
-            if skipped(lang, row):
-                (out_audio / lang / "dictionary" / f"{name}.mp3").unlink(missing_ok=True)
-            else:
-                need(lang, "dictionary", name)
-        data_languages.append({"code": lang, "alphabet": letters, "numbers": nums})
+            need(lang, "dictionary", f"D{row['number']}")
+        entry = {"code": lang, "alphabet": letters, "numbers": nums}
+        if changed:
+            entry["numbersCsv"] = changed
+        data_languages.append(entry)
 
-    # A skipped word has no text (and no sound) in that language.
-    words = [
-        {"n": row["number"], "emoji": row["emoji"],
-         "text": {lang: row[lang] for lang in languages if not skipped(lang, row)}}
-        for row in dictionary
-    ]
+    words = []
+    for row in dictionary:
+        word = {"n": row["number"], "emoji": row["emoji"], "text": {lang: row[lang] for lang in languages}}
+        skip = [lang for lang in languages if skipped(lang, row)]
+        if skip:
+            word["skip"] = skip
+        words.append(word)
 
     if missing:
         sys.exit("Missing audio:\n  " + "\n  ".join(missing))

@@ -3,11 +3,22 @@ using System.Text.Json.Serialization;
 
 namespace LanguageFriends.Services;
 
-/// <summary>Letters and numbers of one language, from data/friends.json.</summary>
-public sealed record LanguageData(string Code, List<string> Alphabet, List<string> Numbers);
+/// <summary>
+/// Letters and numbers of one language, from data/friends.json. <see cref="NumbersCsv"/> holds the CSV text of
+/// the number words that build_data.py changed (NUMBER_FIXES), keyed by the number.
+/// </summary>
+public sealed record LanguageData(
+    string Code, List<string> Alphabet, List<string> Numbers, Dictionary<string, string>? NumbersCsv = null);
 
-/// <summary>A picture word: the emoji, its number in dictionary.csv ("001") and the word in every language.</summary>
-public sealed record Word(string N, string Emoji, Dictionary<string, string> Text);
+/// <summary>
+/// A picture word: the emoji, its number in dictionary.csv ("001") and the word in every language.
+/// <see cref="Skip"/> lists the languages it is left out of (SKIP_WORDS in tools/build_data.py), usually
+/// because the recording is wrong; the text and the recording are kept so they can be checked.
+/// </summary>
+public sealed record Word(string N, string Emoji, Dictionary<string, string> Text, List<string>? Skip = null)
+{
+    public bool IsSkipped(string code) => Skip?.Contains(code) == true;
+}
 
 public sealed record FriendsData(List<LanguageData> Languages, List<Word> Words);
 

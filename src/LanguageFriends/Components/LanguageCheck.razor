@@ -1,0 +1,230 @@
+@using Microsoft.JSInterop
+@inject GameData Data
+@inject SoundService Sound
+@inject IJSRuntime JS
+@implements IAsyncDisposable
+
+@* A pane for grown-ups to check the data of one language: step through its letters, numbers or picture words
+   one by one, hear each recording and see the text and internal number next to it. Words that are left out
+   of the game (SKIP_WORDS in tools/build_data.py) are included and marked, so their recording can be heard. *@
+
+<div class="check-backdrop" @onclick="Close">
+    <section class="check" role="dialog" aria-modal="true" aria-labelledby="check-title" @onclick:stopPropagation="true">
+        <header class="check-head">
+            <h2 id="check-title">🔍 Check language</h2>
+            <button type="button" class="round-btn" @onclick="Close" title="Close (Esc)" aria-label="Close">✕</button>
+        </header>
+
+        <div class="check-controls">
+            <label class="check-lang">
+                <span>Language</span>
+                <select value="@_code" @onchange="ChangeLanguage">
+                    @foreach (var lang in Languages.All)
+                    {
+                        <option value="@lang.Code">@lang.NativeName (@lang.Code)</option>
+                    }
+                </select>
+            </label>
+            <div class="check-kinds" role="group" aria-label="What to check">
+                @foreach (var kind in Enum.GetValues<Kind>())
+                {
+                    var k = kind;
+                    <button type="button" class="@(k == _kind ? "active" : "")" aria-pressed="@(k == _kind)" @onclick="() => ChangeKind(k)">
+                        @KindName(k) <span class="count">@CountOf(k)</span>
+                    </button>
+                }
+            </div>
+        </div>
+
+        @{ var item = Current; }
+        <div class="check-item @(item.Skipped ? "skipped" : "")">
+            <div class="check-id">
+                <span class="id">@item.Id</span>
+                <span class="pos">@(_index + 1) / @Count</span>
+            </div>
+            <div class="check-main" dir="@(_kind == Kind.Alphabet ? Lang.Dir : "ltr")" lang="@Lang.Lang">@item.Main</div>
+            <div class="check-text" dir="@Lang.Dir" lang="@Lang.Lang">@item.Text</div>
+            @if (item.Reference is { Length: > 0 })
+            {
+                <div class="check-ref">@item.Reference</div>
+            }
+            @if (item.Note is { Length: > 0 })
+            {
+                <div class="check-note">@item.Note</div>
+            }
+            <div class="check-file" title="The recording in the Audio project">@item.Source</div>
+        </div>
+
+        <div class="check-media" role="group" aria-label="Player">
+            <button type="button" class="media-btn" @onclick="Prev" disabled="@(_index == 0)" title="Previous (←)" aria-label="Previous">⏮</button>
+            <button type="button" class="media-btn media-play @(_playing ? "on" : "")" @onclick="Play" title="Play (space)" aria-label="Play">▶</button>
+            <button type="button" class="media-btn" @onclick="Next" disabled="@(_index >= Count - 1)" title="Next (→)" aria-label="Next">⏭</button>
+        </div>
+        <input class="check-slider" type="range" min="1" max="@Count" value="@(_index + 1)" @oninput="Jump" aria-label="Go to item" />
+        <p class="check-help">← → step and play · space plays again · the numbers are the internal names of the recordings (A = alphabet, N = numbers, D = dictionary.csv)</p>
+    </section>
+</div>
+
+@code {
+    private enum Kind { Alphabet, Pictures, Numbers }
+
+    /// <summary>A step of the pane: what is shown, and where its recording is.</summary>
+    private sealed record Item(string Id, string Main, string Text, string Audio, string Source,
+        string? Reference = null, string? Note = null, bool Skipped = false);
+
+    [Parameter] public string? Code { get; set; }
+    [Parameter] public EventCallback OnClose { get; set; }
+
+    private string _code = "da-DK";
+    private Kind _kind = Kind.Alphabet;
+    private int _index;
+    private bool _playing;
+    private int _play;   // bumped for every sound, so a sound that ends late doesn't clear a newer one
+    private DotNetObjectReference<LanguageCheck>? _self;
+
+    private Language Lang => Languages.Find(_code) ?? Languages.All[0];
+    private LanguageData LangData => Data[_code];
+    private int Count => CountOf(_kind);
+
+    private int CountOf(Kind kind) => kind switch
+    {
+        Kind.Alphabet => LangData.Alphabet.Count,
+        Kind.Numbers => LangData.Numbers.Count,
+        _ => Data.Words.Count,
+    };
+
+    private static string KindName(Kind kind) => kind switch
+    {
+        Kind.Alphabet => "🔤 Alphabet",
+        Kind.Numbers => "🔢 Numbers",
+        _ => "🐱 Pictures",
+    };
+
+    protected override void OnInitialized()
+    {
+        if (Languages.Find(Code) is not null) _code = Code!;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+        _self = DotNetObjectReference.Create(this);
+        try { await JS.InvokeVoidAsync("friends.listenKeys", _self); }
+        catch (JSException) { }
+    }
+
+    private Item Current => _kind switch
+    {
+        Kind.Alphabet => LetterItem(_index),
+        Kind.Numbers => NumberItem(_index + 1),
+        _ => WordItem(Data.Words[_index]),
+    };
+
+    private Item LetterItem(int i)
+    {
+        var letter = LangData.Alphabet[i];
+        var lower = Lang.Lower(letter);
+        var name = $"A{i + 1:00}";
+        return new(name, letter, lower == letter ? "" : lower,
+            GameData.LetterAudio(_code, i), Source("alphabet", name));
+    }
+
+    private Item NumberItem(int n)
+    {
+        var name = $"N{n:00}";
+        string? note = null;
+        if (LangData.NumbersCsv?.GetValueOrDefault(n.ToString()) is { } csv)
+            note = $"numbertext_selected.csv says \"{csv}\"; the game shows \"{LangData.Numbers[n - 1]}\" (NUMBER_FIXES), as the voice reads it.";
+        return new(name, n.ToString(), LangData.Numbers[n - 1],
+            GameData.NumberAudio(_code, n), Source("numbers", name), Note: note);
+    }
+
+    private Item WordItem(Word word)
+    {
+        var name = $"D{word.N}";
+        var refs = new[] { "en-GB", "da-DK" }
+            .Where(c => c != _code && word.Text.ContainsKey(c))
+            .Select(c => $"{c[..2]}: {word.Text[c]}");
+        var skipped = word.IsSkipped(_code);
+        return new(name, word.Emoji, word.Text.GetValueOrDefault(_code) ?? "—",
+            GameData.WordAudio(_code, word), Source("dictionary", name),
+            Reference: string.Join(" · ", refs),
+            Note: skipped ? "⚠️ Left out of the game in this language (SKIP_WORDS in tools/build_data.py): the recording needs to be made again." : null,
+            Skipped: skipped);
+    }
+
+    private string Source(string category, string name) => $"outputaudio/{_code}/{category}/{name}_female.mp3";
+
+    private async Task Play()
+    {
+        var play = ++_play;
+        _playing = true;
+        StateHasChanged();
+        await Sound.SayAsync(Current.Audio);
+        if (play != _play) return;
+        _playing = false;
+        StateHasChanged();
+    }
+
+    private Task Go(int index)
+    {
+        index = Math.Clamp(index, 0, Count - 1);
+        if (index == _index) return Task.CompletedTask;
+        _index = index;
+        return Play();
+    }
+
+    private Task Prev() => Go(_index - 1);
+
+    private Task Next() => Go(_index + 1);
+
+    private Task Jump(ChangeEventArgs e) =>
+        int.TryParse(e.Value?.ToString(), out var n) ? Go(n - 1) : Task.CompletedTask;
+
+    private Task ChangeLanguage(ChangeEventArgs e)
+    {
+        if (Languages.Find(e.Value?.ToString()) is null) return Task.CompletedTask;
+        _code = e.Value!.ToString()!;
+        _index = Math.Min(_index, Count - 1);   // stay on the same item, to compare languages
+        return Play();
+    }
+
+    private async Task ChangeKind(Kind kind)
+    {
+        if (kind == _kind) return;
+        _kind = kind;
+        _index = 0;
+        ++_play;
+        _playing = false;
+        await Sound.StopAsync();
+    }
+
+    private async Task Close()
+    {
+        ++_play;
+        await Sound.StopAsync();
+        await OnClose.InvokeAsync();
+    }
+
+    [JSInvokable]
+    public async Task Key(string key)
+    {
+        await (key switch
+        {
+            "prev" => Prev(),
+            "next" => Next(),
+            "play" => Play(),
+            "close" => Close(),
+            _ => Task.CompletedTask,
+        });
+        StateHasChanged();
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        try { await JS.InvokeVoidAsync("friends.unlistenKeys"); }
+        catch (JSException) { }
+        catch (JSDisconnectedException) { }
+        _self?.Dispose();
+    }
+}
