@@ -33,7 +33,7 @@ NUMBER_FIXES = {("da-DK", 1): "en"}
 # usually because the recording is wrong. The word is still used between other languages; a round never
 # asks it when the language is the one being learned or the child's own.
 SKIP_WORDS = {
-    "da-DK": {"rose"},   # the Danish voice mispronounces it
+    "da-DK": {"rose", "fly"},   # the Danish voice gets these wrong
 }
 
 
