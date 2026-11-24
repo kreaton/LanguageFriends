@@ -85,6 +85,8 @@ python -X utf8 tools/build_data.py ..\..\..\Audio
 
 The number sounds are the voice reading the digits, so the written number words must match what it says. `NUMBER_FIXES` in `build_data.py` shows Danish 1 as *en*, as the voice says it, instead of the CSV's CLDR form *et*.
 
+To drop a picture word from one language, for example because its recording is wrong, add it to `SKIP_WORDS` in `build_data.py`, written as in that language's column of `dictionary.csv`, and run the script again. The word loses its text and sound in that language, and a round never uses it (as question or as wrong picture) when that language is either of the two; other language pairs still have it. Danish *rose* 🌹 is skipped this way, because the Danish voice mispronounces it.
+
 The game's own texts (the buttons, "Try again!", "Well done!", the greetings) are in [`Models/Languages.cs`](src/LanguageFriends/Models/Languages.cs), written by hand. **A native speaker should check them**, like the word translations in the Audio project.
 
 The voices are synthetic, and Microsoft requires that users are told so: the game says it at the bottom of the page, in the child's language. The audio files may only be used in the game; see [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md) and `wwwroot/audio/README.txt`.

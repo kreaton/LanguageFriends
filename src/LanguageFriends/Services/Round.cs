@@ -147,7 +147,9 @@ public sealed class Round
 
     private List<Question> WordQuestions(GameData data, Random rnd)
     {
-        var words = data.Words.ToList();
+        // A word can be left out of a language (SKIP_WORDS in tools/build_data.py); it then has no text
+        // there and is not used at all when that language is either of the two.
+        var words = data.Words.Where(w => w.Text.ContainsKey(To.Code) && w.Text.ContainsKey(From.Code)).ToList();
         var choices = Level switch { 1 => 3, 2 => 6, _ => 9 };
         var picks = words.ToList();
         Shuffle(picks, rnd);

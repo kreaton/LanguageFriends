@@ -29,6 +29,13 @@ WWWROOT = REPO / "src" / "LanguageFriends" / "wwwroot"
 # reads "1" as "en", which is also what most Danes say when counting.
 NUMBER_FIXES = {("da-DK", 1): "en"}
 
+# Picture words to leave out of one language, written as in that language's column of dictionary.csv,
+# usually because the recording is wrong. The word is still used between other languages; a round never
+# asks it when the language is the one being learned or the child's own.
+SKIP_WORDS = {
+    "da-DK": {"rose"},   # the Danish voice mispronounces it
+}
+
 
 def read_csv(path: Path) -> list[dict[str, str]]:
     with path.open(encoding="utf-8-sig", newline="") as f:
@@ -43,6 +50,14 @@ def main(audio_root: Path) -> None:
     for r in read_csv(audio_root / "numbertext_selected.csv"):
         numbers.setdefault(r["language"], []).append(r["text"])
     dictionary = read_csv(audio_root / "dictionary.csv")
+
+    def skipped(lang: str, row: dict[str, str]) -> bool:
+        return row[lang] in SKIP_WORDS.get(lang, set())
+
+    for lang, skip in SKIP_WORDS.items():
+        unknown = skip - {row[lang] for row in dictionary}
+        if unknown:
+            sys.exit(f"SKIP_WORDS: {lang} has no word {', '.join(sorted(unknown))} in dictionary.csv")
 
     out_audio = WWWROOT / "audio"
     missing: list[str] = []
@@ -72,11 +87,17 @@ def main(audio_root: Path) -> None:
         for i in range(len(nums)):
             need(lang, "numbers", f"N{i + 1:02}")
         for row in dictionary:
-            need(lang, "dictionary", f"D{row['number']}")
+            name = f"D{row['number']}"
+            if skipped(lang, row):
+                (out_audio / lang / "dictionary" / f"{name}.mp3").unlink(missing_ok=True)
+            else:
+                need(lang, "dictionary", name)
         data_languages.append({"code": lang, "alphabet": letters, "numbers": nums})
 
+    # A skipped word has no text (and no sound) in that language.
     words = [
-        {"n": row["number"], "emoji": row["emoji"], "text": {lang: row[lang] for lang in languages}}
+        {"n": row["number"], "emoji": row["emoji"],
+         "text": {lang: row[lang] for lang in languages if not skipped(lang, row)}}
         for row in dictionary
     ]
 
