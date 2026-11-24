@@ -1,0 +1,75 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Language Friends app icon: Freja (Danish) and Omar (Arabic) from the game, greeting each other.
+       The kids are copied from the output of Components/Kid.razor (happy mood, without arms).
+       Rendered to PNG by tools/make_icons.py. -->
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#4dabf7" />
+      <stop offset="1" stop-color="#a5d8ff" />
+    </linearGradient>
+    <clipPath id="tile"><rect width="512" height="512" rx="112" /></clipPath>
+  </defs>
+  <g id="background">
+    <rect width="512" height="512" rx="112" fill="url(#sky)" />
+    <path d="M0 430 Q256 370 512 430 V512 H0 Z" fill="#8ce99a" />
+  </g>
+  <g clip-path="url(#tile)"><g id="content">
+    <!-- speech bubbles -->
+    <g font-weight="700" text-anchor="middle" fill="#2b2340">
+      <rect x="36" y="96" width="188" height="92" rx="42" fill="#fff" />
+      <path d="M114 184 l16 30 l16 -30 z" fill="#fff" />
+      <text x="130" y="160" font-size="54" font-family="Fredoka, 'Segoe UI', sans-serif">Hej!</text>
+      <rect x="288" y="96" width="188" height="92" rx="42" fill="#fff" />
+      <path d="M366 184 l16 30 l16 -30 z" fill="#fff" />
+      <text x="382" y="158" font-size="50" font-family="'Segoe UI', sans-serif" direction="rtl" unicode-bidi="embed">مرحبا!</text>
+    </g>
+    <!-- Freja -->
+    <g transform="translate(10 248) scale(1.2)">
+      <path d="M28 220 C30 184 58 166 100 166 C142 166 170 184 172 220 Z" fill="#e03131"/>
+      <ellipse cx="34" cy="120" rx="15" ry="26" fill="#f2c14e" transform="rotate(18 34 120)"/>
+      <ellipse cx="166" cy="120" rx="15" ry="26" fill="#f2c14e" transform="rotate(-18 166 120)"/>
+      <circle cx="44" cy="96" r="6" fill="#e03131"/>
+      <circle cx="156" cy="96" r="6" fill="#e03131"/>
+      <rect x="86" y="140" width="28" height="32" rx="10" fill="#e1bca5"/>
+      <path d="M80 168 Q100 190 120 168" fill="none" stroke="#ffffff" stroke-width="6" stroke-linecap="round"/>
+      <circle cx="49" cy="108" r="11" fill="#f9dcc8"/>
+      <circle cx="151" cy="108" r="11" fill="#f9dcc8"/>
+      <circle cx="50" cy="109" r="5" fill="#e1bca5"/>
+      <circle cx="150" cy="109" r="5" fill="#e1bca5"/>
+      <ellipse cx="100" cy="102" rx="52" ry="54" fill="#f9dcc8"/>
+      <path d="M47 110 C42 58 72 38 100 38 C130 38 158 58 153 110 C149 88 136 70 114 64 C102 80 78 86 56 90 C51 96 48 103 47 110 Z" fill="#f2c14e"/>
+      <ellipse cx="69" cy="128" rx="9" ry="5.5" fill="#ff8fa3" opacity=".45"/>
+      <ellipse cx="131" cy="128" rx="9" ry="5.5" fill="#ff8fa3" opacity=".45"/>
+      <g fill="#c26d4a" opacity=".55"><circle cx="66" cy="120" r="1.6"/><circle cx="72" cy="123" r="1.6"/><circle cx="62" cy="125" r="1.6"/><circle cx="134" cy="120" r="1.6"/><circle cx="128" cy="123" r="1.6"/><circle cx="138" cy="125" r="1.6"/></g>
+      <path d="M71 92 Q79 86 87 90" fill="none" stroke="#987633" stroke-width="4" stroke-linecap="round"/>
+      <path d="M113 90 Q121 86 129 92" fill="none" stroke="#987633" stroke-width="4" stroke-linecap="round"/>
+      <path d="M72 111 Q80 100 88 111" fill="none" stroke="#2b2340" stroke-width="4.5" stroke-linecap="round"/>
+      <path d="M112 111 Q120 100 128 111" fill="none" stroke="#2b2340" stroke-width="4.5" stroke-linecap="round"/>
+      <path d="M96 119 Q100 123 104 119" fill="none" stroke="#e1bca5" stroke-width="3" stroke-linecap="round"/>
+      <path d="M83 128 Q100 152 117 128 Z" fill="#7a2e3a" stroke="#7a2e3a" stroke-width="2" stroke-linejoin="round"/>
+      <path d="M91 139 Q100 147 109 139 Q100 134 91 139 Z" fill="#ff8787"/>
+    </g>
+    <!-- Omar -->
+    <g transform="translate(262 248) scale(1.2)">
+      <path d="M28 220 C30 184 58 166 100 166 C142 166 170 184 172 220 Z" fill="#94d82d"/>
+      <rect x="86" y="140" width="28" height="32" rx="10" fill="#af7048"/>
+      <path d="M80 168 Q100 190 120 168" fill="none" stroke="#ffffff" stroke-width="6" stroke-linecap="round"/>
+      <circle cx="49" cy="108" r="11" fill="#b97a50"/>
+      <circle cx="151" cy="108" r="11" fill="#b97a50"/>
+      <circle cx="50" cy="109" r="5" fill="#af7048"/>
+      <circle cx="150" cy="109" r="5" fill="#af7048"/>
+      <ellipse cx="100" cy="102" rx="52" ry="54" fill="#b97a50"/>
+      <path d="M48 98 C46 58 72 40 100 40 C128 40 154 58 152 98 C140 80 120 74 100 74 C80 74 60 80 48 98 Z" fill="#140d09"/>
+      <g fill="#140d09"><circle cx="49.3" cy="81.5" r="12"/><circle cx="57.2" cy="67.1" r="12"/><circle cx="69" cy="55.8" r="12"/><circle cx="83.8" cy="48.5" r="12"/><circle cx="100" cy="46" r="12"/><circle cx="116.2" cy="48.5" r="12"/><circle cx="131" cy="55.8" r="12"/><circle cx="142.8" cy="67.1" r="12"/><circle cx="150.7" cy="81.5" r="12"/></g>
+      <ellipse cx="69" cy="128" rx="9" ry="5.5" fill="#ff8fa3" opacity=".45"/>
+      <ellipse cx="131" cy="128" rx="9" ry="5.5" fill="#ff8fa3" opacity=".45"/>
+      <path d="M71 92 Q79 86 87 90" fill="none" stroke="#1e130d" stroke-width="4" stroke-linecap="round"/>
+      <path d="M113 90 Q121 86 129 92" fill="none" stroke="#1e130d" stroke-width="4" stroke-linecap="round"/>
+      <path d="M72 111 Q80 100 88 111" fill="none" stroke="#2b2340" stroke-width="4.5" stroke-linecap="round"/>
+      <path d="M112 111 Q120 100 128 111" fill="none" stroke="#2b2340" stroke-width="4.5" stroke-linecap="round"/>
+      <path d="M96 119 Q100 123 104 119" fill="none" stroke="#af7048" stroke-width="3" stroke-linecap="round"/>
+      <path d="M83 128 Q100 152 117 128 Z" fill="#7a2e3a" stroke="#7a2e3a" stroke-width="2" stroke-linejoin="round"/>
+      <path d="M91 139 Q100 147 109 139 Q100 134 91 139 Z" fill="#ff8787"/>
+    </g>
+  </g></g>
+</svg>

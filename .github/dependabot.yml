@@ -1,0 +1,26 @@
+# Dependabot version updates (free for public and private repositories).
+# Security updates and alerts are switched on in Settings > Advanced Security.
+version: 2
+updates:
+  - package-ecosystem: "nuget"
+    directories:
+      - "/src/LanguageFriends"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    ignore:
+      # The games target .NET 10. A new major version (11) needs a new target framework, so it is upgraded by hand.
+      - dependency-name: "Microsoft.AspNetCore.*"
+        update-types: ["version-update:semver-major"]
+    groups:
+      nuget-minor-and-patch:
+        update-types: ["minor", "patch"]
+  - package-ecosystem: "github-actions"
+    directories:
+      - "/"
+    schedule:
+      interval: "monthly"
+    open-pull-requests-limit: 5
+    groups:
+      actions:
+        update-types: ["minor", "patch"]

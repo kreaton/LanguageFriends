@@ -1,0 +1,74 @@
+name: Build and Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [ "main" ] # Change to "master" if your default branch is master
+  workflow_dispatch: # Also allows a manual run from the Actions tab
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Setup .NET SDK
+        uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: 10.0.x # The project targets net10.0
+
+      - name: Publish .NET App
+        # The run number becomes the patch version (1.0.<run>), see Directory.Build.props
+        run: dotnet publish src/LanguageFriends/LanguageFriends.csproj -c Release -o release -p:BuildNumber=${{ github.run_number }}
+
+      - name: Upload publish artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: publish-output
+          path: release
+
+  deploy-pages:
+    needs: build
+    runs-on: ubuntu-latest
+    env:
+      GAME_DIR: languagefriends
+    steps:
+      - name: Download publish artifact
+        uses: actions/download-artifact@v8
+        with:
+          name: publish-output
+          path: release
+
+      # Pushes the game into the languagefriends/ folder of the gh-pages branch of kreaton/KidsGames,
+      # served at https://kreaton.github.io/KidsGames/languagefriends/. The relative base href works there as-is.
+      # Repository secret PAGES_DEPLOY_KEY: private SSH key of a deploy key (write access) on KidsGames.
+      - name: Deploy to KidsGames GitHub Pages
+        env:
+          DEPLOY_KEY: ${{ secrets.PAGES_DEPLOY_KEY }}
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "$DEPLOY_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -t ed25519 github.com >> ~/.ssh/known_hosts
+          git clone --depth 1 --branch gh-pages git@github.com:kreaton/KidsGames.git site
+          cd site
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          # Several games can deploy at once, so retry on a rejected push.
+          for attempt in 1 2 3 4 5; do
+            rm -rf "$GAME_DIR"
+            cp -r ../release/wwwroot "$GAME_DIR"
+            # Pages can't serve the precompressed copies, so leave them out
+            find "$GAME_DIR" -type f \( -name '*.br' -o -name '*.gz' \) -delete
+            git add -A "$GAME_DIR"
+            if git diff --cached --quiet; then echo "No changes"; exit 0; fi
+            git commit -q -m "Deploy $GAME_DIR from ${{ github.repository }}@${GITHUB_SHA::7}"
+            if git push origin gh-pages; then exit 0; fi
+            sleep $((attempt * 5))
+            git fetch --depth 1 origin gh-pages
+            git reset -q --hard FETCH_HEAD
+          done
+          exit 1

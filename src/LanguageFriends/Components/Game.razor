@@ -1,0 +1,527 @@
+@using System.Globalization
+@using Microsoft.JSInterop
+@inject IJSRuntime JS
+@inject GameData Data
+@inject SoundService Sound
+@inject Settings Store
+@implements IDisposable
+
+<div class="page" lang="@(_from?.Lang ?? "da")">
+    <header class="title">
+        <button type="button" class="logo" @onclick="GoHome" title="Language Friends">
+            <span class="logo-heads" aria-hidden="true">
+                <Kid Language="@Languages.All[0]" />
+                <Kid Language="@Languages.All[10]" />
+            </span>
+            <h1>Language Friends</h1>
+        </button>
+        <div class="title-actions">
+            @if (_from is not null && _to is not null && _screen != Screen.PickFrom && _screen != Screen.PickTo)
+            {
+                <button type="button" class="pair-btn" @onclick="ChangeLanguages" title="@($"{From.NativeName} → {To.NativeName}")">
+                    <span class="mini"><Kid Language="@From" /></span>
+                    <span class="pair-arrow">→</span>
+                    <span class="mini"><Kid Language="@_to" /></span>
+                </button>
+            }
+            <button type="button" class="round-btn" @onclick="ToggleEffects" aria-pressed="@Sound.Effects"
+                    title="@(Sound.Effects ? "🔔 on" : "🔕 off")">@(Sound.Effects ? "🔔" : "🔕")</button>
+            <a class="kg-home" href="../" aria-label="Alle spil" title="Alle spil"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11.5 12 4l9 7.5M5.5 9.5V20h4.5v-6h4v6h4.5V9.5" /></svg></a>
+        </div>
+    </header>
+
+    @if (!Data.Loaded)
+    {
+        <p class="loading">…</p>
+    }
+    else
+    {
+        switch (_screen)
+        {
+            case Screen.PickFrom:
+                <section class="picker">
+                    <h2 class="picker-title">
+                        <span>🗣️ Hvilket sprog taler du?</span>
+                        <span class="sub">Which language do you speak?</span>
+                    </h2>
+                    <div class="kid-grid">
+                        @foreach (var lang in Languages.All)
+                        {
+                            <button type="button" class="kid-card" lang="@lang.Lang" @onclick="() => PickFrom(lang)">
+                                <span class="hello" dir="@lang.Dir">@lang.Hello</span>
+                                <Kid Language="@lang" />
+                                <span class="kid-name" dir="@lang.Dir">@lang.KidName</span>
+                                <span class="lang-name" dir="@lang.Dir">@lang.NativeName</span>
+                            </button>
+                        }
+                    </div>
+                </section>
+                break;
+
+            case Screen.PickTo:
+                <section class="picker">
+                    <h2 class="picker-title" dir="@From.Dir">
+                        <button type="button" class="back-btn" @onclick="() => Show(Screen.PickFrom)" aria-label="←">←</button>
+                        <span>📚 @From.Ui.LearnWhich</span>
+                    </h2>
+                    <div class="kid-grid">
+                        @foreach (var lang in Languages.All.Where(l => l != _from))
+                        {
+                            <button type="button" class="kid-card @(lang.Code == "da-DK" ? "featured" : "")" lang="@lang.Lang" @onclick="() => PickTo(lang)">
+                                <span class="hello" dir="@lang.Dir">@lang.Hello</span>
+                                <Kid Language="@lang" />
+                                <span class="kid-name" dir="@lang.Dir">@lang.KidName</span>
+                                <span class="lang-name" dir="@lang.Dir">@lang.NativeName</span>
+                            </button>
+                        }
+                    </div>
+                </section>
+                break;
+
+            case Screen.Menu:
+                <section class="menu">
+                    <div class="duo">
+                        <div class="duo-kid">
+                            <Kid Language="@To" Mood="Mood.Happy" />
+                            <span class="bubble" dir="@To.Dir" lang="@To.Lang">@To.Hello</span>
+                        </div>
+                        <div class="duo-kid small">
+                            <Kid Language="@From" Mood="Mood.Idle" />
+                            <span class="bubble" dir="@From.Dir" lang="@From.Lang">@From.Hello</span>
+                        </div>
+                    </div>
+
+                    <div class="levels" role="group" dir="@From.Dir">
+                        @for (var level = 1; level <= 3; level++)
+                        {
+                            var l = level;
+                            <button type="button" class="level-btn @(l == _level ? "active" : "")" aria-pressed="@(l == _level)" @onclick="() => SetLevel(l)">
+                                <span class="level-stars">@(new string('⭐', l))</span>
+                                <span class="level-icons" aria-hidden="true">@LevelIcons(l)</span>
+                                <span class="level-name">@LevelName(l)</span>
+                            </button>
+                        }
+                    </div>
+
+                    <div class="modes">
+                        @foreach (var mode in Enum.GetValues<GameMode>())
+                        {
+                            var m = mode;
+                            <button type="button" class="mode-btn mode-@m.ToString().ToLowerInvariant()" @onclick="() => Start(m)">
+                                <span class="mode-sample" dir="@(m == GameMode.Letters ? To.Dir : "ltr")" lang="@To.Lang">@ModeSample(m)</span>
+                                <span class="mode-name" dir="@From.Dir">@ModeName(m)</span>
+                                <span class="mode-best" aria-label="@($"{Best(m)}/3")">
+                                    @for (var s = 1; s <= 3; s++)
+                                    {
+                                        <span class="@(s <= Best(m) ? "on" : "off")">★</span>
+                                    }
+                                </span>
+                            </button>
+                        }
+                    </div>
+                </section>
+                break;
+
+            case Screen.Play when _round is not null:
+                var q = _round.Current;
+                <section class="play">
+                    <div class="play-top">
+                        <button type="button" class="back-btn" @onclick="() => Show(Screen.Menu)" aria-label="✕">✕</button>
+                        <ol class="dots" aria-label="@($"{_round.Index + 1}/{_round.Count}")">
+                            @for (var i = 0; i < _round.Count; i++)
+                            {
+                                <li class="@DotClass(i)"></li>
+                            }
+                        </ol>
+                    </div>
+
+                    <div class="stage">
+                        <div class="teacher">
+                            <Kid Language="@To" Mood="@_teacherMood" />
+                            <div class="bubble big" dir="@To.Dir" lang="@To.Lang">
+                                @if (_round.Solved)
+                                {
+                                    <span class="praise">@To.Praise</span>
+                                    <span class="said">@SolvedText(q)</span>
+                                }
+                                else if (_wrongFlash)
+                                {
+                                    <span class="praise oops">@To.TryAgain</span>
+                                }
+                                else if (_round.ShowTarget)
+                                {
+                                    <span class="said">@q.TargetText</span>
+                                }
+                                <button type="button" class="say-btn" @onclick="ReplayTarget" title="@From.Ui.HearAgain" aria-label="@From.Ui.HearAgain">🔊</button>
+                            </div>
+                        </div>
+
+                        <div class="helper">
+                            <div class="bubble" dir="@From.Dir" lang="@From.Lang">
+                                @if (_round.Solved && q.OwnText is not null)
+                                {
+                                    <span class="said">@q.OwnText</span>
+                                }
+                                else if (_wrongFlash)
+                                {
+                                    <span class="said small">@From.TryAgain</span>
+                                }
+                                else if (_notInMine)
+                                {
+                                    <span class="said small">🤷 @From.Ui.NotInMine</span>
+                                }
+                                else if (_round.ShowOwn && q.OwnText is not null)
+                                {
+                                    <span class="said">@q.OwnText</span>
+                                }
+                                <button type="button" class="say-btn @(q.OwnAudio is null ? "none" : "")" @onclick="HelpOwn" title="@From.Ui.MyLanguage" aria-label="@From.Ui.MyLanguage">🔊</button>
+                            </div>
+                            <Kid Language="@From" Mood="@_helperMood" />
+                        </div>
+                    </div>
+
+                    <div class="board board-@_round.Mode.ToString().ToLowerInvariant() @(_round.Mode == GameMode.Words ? $"n{q.Choices.Count}" : "")"
+                         dir="@(_round.Mode == GameMode.Letters ? To.Dir : "ltr")" lang="@To.Lang">
+                        @foreach (var choice in q.Choices)
+                        {
+                            var c = choice;
+                            var right = _round.Solved && c.Key == q.AnswerKey;
+                            var wrong = _round.Wrong.Contains(c.Key);
+                            var hint = !_round.Solved && _round.ShowHint && c.Key == q.AnswerKey;
+                            <button type="button" class="tile @(right ? "right" : "") @(wrong ? "wrong" : "") @(hint ? "hint" : "")"
+                                    disabled="@(wrong || (_round.Solved && !right))" @onclick="() => Tap(c)">
+                                <span class="tile-main">@c.Display</span>
+                                @if (right && _round.Mode != GameMode.Letters)
+                                {
+                                    <span class="tile-sub">@q.TargetText</span>
+                                }
+                                else if (c.Sub is { Length: > 0 })
+                                {
+                                    <span class="tile-sub">@c.Sub</span>
+                                }
+                            </button>
+                        }
+                    </div>
+                </section>
+                break;
+
+            case Screen.Done when _round is not null:
+                <section class="done">
+                    <div class="duo">
+                        <div class="duo-kid">
+                            <Kid Language="@To" Mood="Mood.Happy" />
+                            <span class="bubble" dir="@To.Dir" lang="@To.Lang">@To.Praise</span>
+                        </div>
+                        <div class="duo-kid">
+                            <Kid Language="@From" Mood="Mood.Happy" />
+                            <span class="bubble" dir="@From.Dir" lang="@From.Lang">@From.Praise</span>
+                        </div>
+                    </div>
+                    <div class="result">
+                        <div class="big-stars">
+                            @for (var s = 1; s <= 3; s++)
+                            {
+                                <span class="@(s <= _round.Stars ? "on" : "off")" style="animation-delay:@(s * 0.25)s">★</span>
+                            }
+                        </div>
+                        <p class="score">@_round.Score / @_round.Count @(_newBest ? "🏆" : "")</p>
+                        <div class="done-actions" dir="@From.Dir">
+                            <button type="button" class="big-btn" @onclick="() => Start(_round.Mode)">🔁 @From.Ui.PlayAgain</button>
+                            <button type="button" class="big-btn ghost" @onclick="() => Show(Screen.Menu)">🏠</button>
+                        </div>
+                    </div>
+                </section>
+                break;
+        }
+    }
+
+    <footer class="credits">
+        <p dir="@(_from?.Dir ?? "ltr")">🔊 @((_from ?? Languages.All[0]).Ui.Voices)</p>
+        <p>Lavet med kærlighed 💛 (c) 2026 Per Hejndorf, Kreaton – @BuildInfo.Display</p>
+    </footer>
+</div>
+
+@code {
+    private enum Screen { PickFrom, PickTo, Menu, Play, Done }
+
+    private Screen _screen = Screen.PickFrom;
+    private Language? _from;
+    private Language? _to;
+    private Language From => _from!;
+    private Language To => _to!;
+    private int _level = 1;
+    private Round? _round;
+    private readonly List<bool?> _results = [];   // per question: true = first try, false = with help
+    private readonly Dictionary<GameMode, int> _best = [];
+    private bool _newBest;
+
+    private Mood _teacherMood = Mood.Idle;
+    private Mood _helperMood = Mood.Idle;
+    private bool _wrongFlash;
+    private bool _notInMine;
+    private bool _ownHeard;   // the child has already heard this question in their own language
+
+    // Bumped for every new question or screen, so an old timer or sound that finishes late does nothing.
+    private int _token;
+    private readonly CancellationTokenSource _life = new();
+
+    protected override async Task OnInitializedAsync() => await Data.LoadAsync();
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+        Sound.Effects = await Store.GetAsync("effects") != "off";
+        _level = int.TryParse(await Store.GetAsync("level"), out var lv) ? Math.Clamp(lv, 1, 3) : 1;
+        _from = Languages.Find(await Store.GetAsync("from"));
+        _to = Languages.Find(await Store.GetAsync("to"));
+        if (_from is not null && _to is not null && _from != _to)
+        {
+            await LoadBestAsync();
+            _screen = Screen.Menu;
+        }
+        else if (_from is not null)
+        {
+            _screen = Screen.PickTo;
+        }
+        StateHasChanged();
+    }
+
+    // ---------- Navigation ----------
+
+    private void Show(Screen screen)
+    {
+        _token++;
+        _ = Sound.StopAsync();
+        _screen = screen;
+        ToTop();
+        if (screen == Screen.Menu) _ = LoadBestThenRender();
+    }
+
+    private void ToTop() => _ = JS.InvokeVoidAsync("scrollTo", 0, 0).AsTask().ContinueWith(_ => { });
+
+    private void GoHome() => Show(_from is not null && _to is not null ? Screen.Menu : Screen.PickFrom);
+
+    private void ChangeLanguages() => Show(Screen.PickFrom);
+
+    private async Task PickFrom(Language lang)
+    {
+        _from = lang;
+        if (_to == lang) _to = null;
+        await Store.SetAsync("from", lang.Code);
+        Show(Screen.PickTo);
+    }
+
+    private async Task PickTo(Language lang)
+    {
+        _to = lang;
+        await Store.SetAsync("to", lang.Code);
+        Show(Screen.Menu);
+    }
+
+    private async Task SetLevel(int level)
+    {
+        _level = level;
+        await Store.SetAsync("level", level.ToString(CultureInfo.InvariantCulture));
+        await LoadBestAsync();
+    }
+
+    private async Task ToggleEffects()
+    {
+        Sound.Effects = !Sound.Effects;
+        await Store.SetAsync("effects", Sound.Effects ? "on" : "off");
+    }
+
+    private async Task LoadBestAsync()
+    {
+        if (_from is null || _to is null) return;
+        foreach (var m in Enum.GetValues<GameMode>())
+            _best[m] = await Store.GetStarsAsync(From.Code, To.Code, m, _level);
+    }
+
+    private async Task LoadBestThenRender()
+    {
+        await LoadBestAsync();
+        StateHasChanged();
+    }
+
+    private int Best(GameMode m) => _best.GetValueOrDefault(m);
+
+    // ---------- Playing ----------
+
+    private void Start(GameMode mode)
+    {
+        _round = new Round(Data, mode, _level, _from!, _to!);
+        _results.Clear();
+        _results.AddRange(Enumerable.Repeat<bool?>(null, _round.Count));
+        _newBest = false;
+        _screen = Screen.Play;
+        ToTop();
+        _ = AskAsync();
+    }
+
+    /// <summary>A new question: the teacher kid says it.</summary>
+    private async Task AskAsync()
+    {
+        var token = ++_token;
+        _teacherMood = Mood.Idle;
+        _helperMood = Mood.Idle;
+        _wrongFlash = false;
+        _notInMine = false;
+        _ownHeard = false;
+        StateHasChanged();
+        if (!await Pause(450, token)) return;
+        await SayTarget(token);
+    }
+
+    private async Task SayTarget(int token)
+    {
+        if (_round is null || token != _token) return;
+        _teacherMood = Mood.Talk;
+        StateHasChanged();
+        await Sound.SayAsync(_round.Current.TargetAudio);
+        if (token != _token) return;
+        _teacherMood = _round.Solved ? Mood.Happy : Mood.Idle;
+        StateHasChanged();
+    }
+
+    private Task ReplayTarget()
+    {
+        _wrongFlash = false;
+        return SayTarget(_token);
+    }
+
+    private async Task HelpOwn()
+    {
+        if (_round is null || _from is null) return;
+        var token = _token;
+        var audio = _round.Current.OwnAudio;
+        if (audio is null)
+        {
+            _notInMine = true;
+            _helperMood = Mood.Oops;
+            StateHasChanged();
+            if (!await Pause(1600, token)) return;
+            _notInMine = false;
+            _helperMood = Mood.Idle;
+            return;
+        }
+        _ownHeard = true;
+        _helperMood = Mood.Talk;
+        _teacherMood = Mood.Idle;
+        StateHasChanged();
+        await Sound.SayAsync(audio);
+        if (token != _token) return;
+        _helperMood = _round.Solved ? Mood.Happy : Mood.Idle;
+        StateHasChanged();
+    }
+
+    private async Task Tap(Choice choice)
+    {
+        if (_round is null || _round.Solved) return;
+        var token = ++_token;   // a tap cuts off whatever was going on
+        var index = _round.Index;
+
+        if (_round.Answer(choice.Key))
+        {
+            _results[index] = _round.Misses == 0;
+            _wrongFlash = false;
+            _notInMine = false;
+            _teacherMood = Mood.Happy;
+            _helperMood = Mood.Happy;
+            StateHasChanged();
+            await Sound.SuccessAsync();
+            // The teacher doesn't say the word again; the child's own kid says it in the child's
+            // language, unless the child already heard it in their language for this question.
+            if (_round.Current.OwnAudio is { } own && !_ownHeard)
+            {
+                _helperMood = Mood.Talk;
+                StateHasChanged();
+                await Sound.SayAsync(own);
+                if (token != _token) return;
+                _helperMood = Mood.Happy;
+            }
+            StateHasChanged();
+            if (!await Pause(900, token)) return;
+            if (_round.IsLast)
+            {
+                await FinishAsync();
+                return;
+            }
+            _round.Next();
+            await AskAsync();
+            return;
+        }
+
+        _wrongFlash = true;
+        _notInMine = false;
+        _teacherMood = Mood.Oops;
+        _helperMood = Mood.Oops;
+        StateHasChanged();
+        await Sound.FailAsync();
+        if (!await Pause(1100, token)) return;
+        _wrongFlash = false;
+        _helperMood = Mood.Idle;
+        await SayTarget(token);
+    }
+
+    private async Task FinishAsync()
+    {
+        _token++;
+        _newBest = await Store.SaveStarsAsync(From.Code, To.Code, _round!.Mode, _round.Level, _round.Stars);
+        _screen = Screen.Done;
+        ToTop();
+        StateHasChanged();
+        await Sound.FanfareAsync();
+    }
+
+    /// <summary>Waits, then tells whether the game is still on the same question.</summary>
+    private async Task<bool> Pause(int ms, int token)
+    {
+        try { await Task.Delay(ms, _life.Token); }
+        catch (TaskCanceledException) { return false; }
+        return token == _token;
+    }
+
+    // ---------- Texts ----------
+
+    private string SolvedText(Question q) => q.TargetText;
+
+    private string DotClass(int i) => i == _round!.Index && _screen == Screen.Play && !_round.Solved
+        ? "now"
+        : _results[i] switch { true => "star", false => "done", _ => "" };
+
+    private string ModeName(GameMode m) => m switch
+    {
+        GameMode.Letters => From.Ui.Letters,
+        GameMode.Words => From.Ui.Words,
+        _ => From.Ui.Numbers,
+    };
+
+    private string ModeSample(GameMode m)
+    {
+        if (m == GameMode.Numbers) return "1 2 3";
+        if (m == GameMode.Words) return "🐱 🍎 🚗";
+        var abc = Data[To.Code].Alphabet;
+        return string.Join(' ', abc.Take(3));
+    }
+
+    private string LevelName(int level) => level switch
+    {
+        1 => From.Ui.Level1,
+        2 => From.Ui.Level2,
+        _ => From.Ui.Level3,
+    };
+
+    private static string LevelIcons(int level) => level switch
+    {
+        1 => "👀 🔊",
+        2 => "📝 🔊",
+        _ => "👂",
+    };
+
+    public void Dispose()
+    {
+        _life.Cancel();
+        _life.Dispose();
+    }
+}
