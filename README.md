@@ -85,7 +85,7 @@ python -X utf8 tools/build_data.py ..\..\..\Audio
 
 The number sounds are the voice reading the digits, so the written number words must match what it says. `NUMBER_FIXES` in `build_data.py` shows Danish 1 as *en*, as the voice says it, instead of the CSV's CLDR form *et*.
 
-To drop a picture word from one language, for example because its recording is wrong, add it to `SKIP_WORDS` in `build_data.py`, written as in that language's column of `dictionary.csv`, and run the script again. A round then never uses the word (as question or as wrong picture) when that language is either of the two; other language pairs still have it. Its text and current recording stay in the data, marked `"skip"`, so **Check language** can still show and play it. Danish *rose* 🌹 (D063) and *fly* ✈️ (D070) are skipped this way, because the Danish voice gets them wrong; they need new recordings.
+To drop a picture word from one language, for example because its recording is wrong, add it to `SKIP_WORDS` in `build_data.py`, written as in that language's column of `dictionary.csv`, and run the script again. A round then never uses the word (as question or as wrong picture) when that language is either of the two; other language pairs still have it. Its text and current recording stay in the data, marked `"skip"`, so **Check language** can still show and play it. Nothing is skipped at the moment. Danish *rose* 🌹 (D063) and *fly* ✈️ (D070) were, until they got new recordings; the Danish word for ✈️ is now *flyvemaskine*. The Danish letter Z (A26) got a new recording at the same time.
 
 ### Check language
 

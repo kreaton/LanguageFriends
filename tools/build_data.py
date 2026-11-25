@@ -33,9 +33,8 @@ NUMBER_FIXES = {("da-DK", 1): "en"}
 # usually because the recording is wrong. The word is still used between other languages; a round never
 # asks it when the language is the one being learned or the child's own. Its text and current recording
 # stay in the data (marked "skip"), so the Check language pane can still show and play it.
-SKIP_WORDS = {
-    "da-DK": {"rose", "fly"},   # the Danish voice gets these wrong
-}
+# Example: {"da-DK": {"rose"}}. Empty now: Danish rose and fly (now "flyvemaskine") got new recordings.
+SKIP_WORDS: dict[str, set[str]] = {}
 
 
 def read_csv(path: Path) -> list[dict[str, str]]:
